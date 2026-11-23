@@ -1,0 +1,6 @@
+interface:
+  display_name: "Idea Forge"
+  short_description: "Generate distinct ideas and stress-test their assumptions"
+  default_prompt: "Use $idea-forge to explore different ways to solve this problem."
+policy:
+  allow_implicit_invocation: true
