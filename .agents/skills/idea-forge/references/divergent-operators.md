@@ -1,14 +1,39 @@
 # Divergent operators
 
-Keep the episode, desired outcome and existing strengths visible. Generate candidates as short sketches of a change and its causal effect. Hold comparisons until the pool is assembled.
+Keep the episode, desired outcome and existing strengths visible. Generate candidates as short sketches of a change and its causal effect. Hold comparisons until the pool is assembled. Give each wave-one generator one operator so the pool comes from different directions.
 
-- **Verbalized sampling.** Ask for several plausible responses from different parts of the response distribution, including unlikely answers. As a variation, request responses with estimated typicality below 0.10. These model estimates are a prompting device. Judge originality by comparing mechanisms and known precedents.
+- **Verbalized sampling.** Ask for several responses from different parts of the response distribution, including unlikely ones. As a variation, ask for responses with estimated probability below 0.10. These estimates are a prompting device, not a measurement. It widens the pool but does not fully undo a model's pull toward typical answers, so pair it with the operators below.
+- **Rule drop.** List the brief's assumed rules (R), not its hard rules (H). Pick one R and drop it, invert it, or swap in a rule borrowed from another field. Ask what solution becomes possible, then check it against every H. Hidden assumptions count as R: "it has to happen on the phone", "the user has to remember", "it has to be free".
 - **Closed-world transformation.** Inventory the resources already present. Try subtraction (remove an element), multiplication (duplicate an element with a changed property), division (move a part in time, place or ownership), task unification (give something already present a second job), or attribute dependency (make one variable depend on another). For a difficult brief, first transform the form, then ask what new function it could serve.
 - **Contradiction and dimensions.** Identify two desired outcomes in tension. Vary actor, timing, incentive, or information available. Pick an unexplored combination and explain how it could satisfy both demands.
-- **Relational analogy.** Find a moderately distant setting with the same bottleneck. Identify the roles, the relationship, and the action that resolves it there. Transfer that relationship and name the point where the analogy breaks.
+- **Relational analogy.** First describe the problem's causal structure in plain roles (who acts, what blocks them, what releases the block). Then find a moderately distant setting with the same structure. Transfer the relationship, not the surface, and name the point where the analogy breaks.
 
-For a large pool, assign consistent mechanism labels after comparing the causal descriptions. From the installed skill directory, run `python3 scripts/diversity_audit.py wave1.json` with a scratch input file shaped like this:
+## Two-step generation and idea cards
 
-    [{"id":"a","mechanism":"transfer responsibility","sketch":"An existing participant takes over the unfinished step."}]
+Each generator first lists 8 to 10 titles of 5 to 8 words. Titles are cheap, they make the gut check possible, and they let you see the spread before anyone writes long sketches. Then it expands its most different titles into cards:
 
-A label covering over 40% of the pool or a pair with high word overlap is a cue to inspect coverage. Check mislabeled paraphrases by hand. Keep useful variants when they change the trade-off.
+    {"id": "w2-3",
+     "title": "Laptop holds the second key",
+     "mechanism": "second device holds the key",
+     "how": "loosening a rule on the phone needs approval from the paired laptop",
+     "depends_on": "the person owns a laptop and keeps it away from bed",
+     "changes": "night loosening needs a second device",
+     "sketch": "40 to 80 words: what happens, why it could work, what could fail."}
+
+`mechanism` is a short reusable label. The coordinator normalizes labels across workers after reading the `how` lines, so two cards with the same causal path share one label even when the wording differs.
+
+## Diversity audit
+
+From the installed skill directory, run `python3 scripts/diversity_audit.py pool.json` on a list of cards (only `id`, `mechanism` and `sketch` are required, the other fields make it sharper). It reports:
+
+- `effective_distinct_ideas`: a Vendi score, roughly how many truly different ideas the pool holds. 1 means all the same, N means all different.
+- `near_duplicate_clusters`: groups whose mechanism, causal path and dependency overlap.
+- `over_40_percent`: any label covering more than 40% of the pool.
+- `most_unique` and `most_redundant`: which cards add or barely add to the spread.
+- `taboo_targets`: up to two mechanisms to ban in a repair wave when the pool collapsed.
+
+The similarity is lexical inside each field, so it is only as good as the labels and `how` lines. Check flagged clusters by hand before banning anything, and keep a variant when it changes the trade-off.
+
+## Taboo repair
+
+For each taboo target (two at most, since longer ban lists make generators strain and drift), brief a fresh generator with the mechanism, two example cards that use it, and this check: "Remove the banned mechanism from your idea. Does it still work? If not, it is the same idea renamed. Name the causal step that is different." Cards that fail the check are dropped before the pool is rebuilt.

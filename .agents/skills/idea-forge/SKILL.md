@@ -3,54 +3,109 @@ name: idea-forge
 description: Interview the user, generate ideas that work or feel different from familiar options, and stress-test them. Use for open-ended brainstorming, feature discovery, research directions, or a request to get beyond familiar solutions. Skip when the user has chosen a direction and wants only implementation or critique.
 license: MIT
 metadata:
-  version: "1.2.1"
+  version: "2.0.0"
 ---
 
 # Idea Forge
 
 Help the user discover an option they would actually try. Use the interview to learn what familiar answers miss. Keep the user's choice of direction open.
 
-## 1. Interview and agree on the brief
+## Rules that always hold
 
-In both modes, read the conversation and directly relevant repo context first. Ask one question per turn and wait. Choose the question whose answer could most change what you explore. Follow an unexpected detail. Use these probes selectively:
+These rules stay at the top so they survive context compaction. Every stage below follows them.
 
-- **Outcome and episode.** What would change for whom? Reconstruct a recent instance. Locate the moment the outcome became more or less likely, what the person did next, and what they cared about at the time.
-- **Current attempts and possible causes.** Find what already works, the workaround, its cost, and where it breaks down. If several explanations fit, ask about an exception or two otherwise similar episodes with different outcomes. Keep plausible causes open when the user cannot distinguish them. Avoid repeated abstract “why” questions.
-- **Success and trade-offs.** What observable difference would make this worth using? Over what period? What would spoil a superficially successful outcome? Identify hard constraints, negotiable constraints and strengths worth keeping.
-- **Comparison and sources.** Learn which familiar approach the user would pass on and why. Let them keep their own best idea private for a later comparison. Invite a relevant artifact, practitioner account or comparator if they have one. Otherwise propose sources that could resolve the remaining uncertainties. Save external precedent research for after free generation.
+1. Ask one question per turn. Stop interviewing as soon as more answers would not change what you explore (caps: Quick 4, Deep 8).
+2. The user owns the frame. Offer competing frames, but never generate from a reframe the user has not picked.
+3. Split the brief's rules into hard rules (H: never broken) and assumed rules (R: fair game to drop or invert). The user confirms which are hard.
+4. First-wave generators never see each other's output, the coordinator's examples, or a debate round.
+5. Compare ideas by mechanism and dependency, not wording. A renamed mechanism is the same idea.
+6. Judge only blind, equal-length cards. Write the concrete difference first, then give one verdict per criterion.
+7. Re-judge close pairs with the order reversed. A verdict that flips becomes a tie.
+8. Return a portfolio across close, stretch and wildcard. Never drop the top wildcard without saying so.
+9. Keep stage artifacts on disk. Chat shows only what the user needs to decide.
+10. With nobody there to answer (unattended or batch runs), skip the human checkpoints, write down what you assumed in their place, and say so in the result.
+11. Mark field-wide novelty as unverified unless a scoped precedent check supports a narrower claim.
 
-**Calibrate novelty for each brief.** Ask what should feel new to this user: how it works, the experience of using it, both, or another dimension they name. If they have already specified this, reflect it in the confirmation. Establish the comparison point (their own attempts, familiar products, or the field). Preserve “either counts” as a valid answer.
+## Effort
 
-Then show the three settings in a single compact chooser. Recommend one with a reason tied to this brief; let the user choose by name or plain language. They can turn it up or down later.
+Quick is the default. Use Deep when the user asks for it or the problem clearly needs breadth and evidence. Effort is separate from the novelty setting.
+
+| Stage | Quick | Deep |
+| --- | --- | --- |
+| Interview | up to 4 questions | up to 8 questions |
+| Frame checkpoint | yes, shares a turn with the brief | yes |
+| Wave one | 3 contrasting passes in the main session | 3 to 5 blind workers |
+| Gut check | only if the user is clearly around | yes, between waves |
+| Diversity audit | by eye, with a mechanism table | `scripts/diversity_audit.py` |
+| Judging | direct side-by-side of finalists | blind cards, decomposed pairs, swap audit, `scripts/score_matrix.py` |
+| Result | 3 to 4 sketches | portfolio of 5 to 7 |
+
+For Deep, read [harness adapters](references/harness-adapters.md) for dispatch, models and the state folder.
+
+## 1. Interview
+
+Read the conversation and directly relevant repo context first. Ask one question per turn and wait. Choose the question whose answer would rule out the most kinds of solutions. Follow an unexpected detail. Stop when the success condition, the hard rules and the novelty target are clear, or when two answers in a row did not change what you would explore. Use these probes selectively:
+
+- **Outcome and episode.** What would change for whom? Reconstruct a recent instance: the moment the outcome became more or less likely, what the person did next, and what they cared about then.
+- **Current attempts and causes.** What already works, the workaround, its cost, and where it breaks. If several causes fit, ask about an exception or two similar episodes with different outcomes. Avoid repeated abstract "why" questions.
+- **Success and trade-offs.** What observable difference would make this worth using, over what period? What would spoil a result that looks good on paper?
+- **Unfair advantage.** What asset, relationship or observation does the user have that an outsider would not?
+- **Veto.** What would make a clever answer socially awkward, risky or too annoying to actually adopt?
+- **Comparison and sources.** Which familiar approach would the user pass on and why? Let them keep their own best idea private for a later comparison. Invite an artifact or comparator if they have one. Save outside precedent research for after free generation.
+
+Use the user's own words for the goal and constraints in the brief. Do not swap in your own metaphors.
+
+**Calibrate novelty.** Ask what should feel new: how it works, the experience of using it, both, or another dimension they name. Establish the comparison point (their own attempts, familiar products, or the field). "Either counts" is a valid answer. Then offer the three settings and recommend one with a reason tied to this brief:
 
 | Setting | What to explore |
 | --- | --- |
 | Close to familiar | Keep the core approach. Find a concrete improvement on the chosen dimension, within existing resources. |
 | A stretch | Change an important part of the mechanism or experience. Explain the departure and offer a plausible first test. |
-| A wild card | Challenge a premise about how the goal must be achieved. Speculative dependencies are welcome when named. Keep the user's success condition and hard constraints. |
+| A wild card | Challenge a premise about how the goal must be achieved. Named speculative dependencies are welcome. Keep the success condition and hard rules. |
 
-Summarize the event, desired change, what has failed, any unresolved cause, and the chosen novelty target. Include the planned comparison if it matters. The chooser and brief can share a confirmation turn: accepting the recommended setting can also confirm the brief. Honor a correction before generating. Quick and Deep control effort independently of novelty.
+## 2. Frame checkpoint
 
-## 2. Generate in two waves
+Before generating, show two or three short frames in one turn, together with the brief summary and the novelty chooser:
 
-Quick is the default, with short passes in the main session. Use Deep for requested or substantial exploration. Read [divergent operators](references/divergent-operators.md); for Deep, also read [harness adapters](references/harness-adapters.md).
+- **Frame A:** the goal as the user stated it.
+- **Frame B:** the tension or veto underneath it (what they are really trying to avoid).
+- **Frame C:** an angle built on their unfair advantage, or on dropping one assumed rule.
 
-**Free generation.** Use the confirmed brief and known facts. Give each Deep worker a different lens and a different question about the user's situation. In Quick, try a few contrasting lenses as separate passes. Explore before looking up examples, sharing sketches or ranking ideas. The coordinator keeps an obvious-answer list for later comparison.
+For each frame give one line on what it assumes and what it would rule out. List the H and R rules and ask the user to move anything that is wrongly placed. The user picks, edits, splits or combines frames. Accepting the recommended frame and setting in one reply confirms the brief. Honor a correction before generating.
 
-**Research and mutation.** Group the first sketches by what would change for the user. Preserve genuinely different experiences even when they share machinery. In Deep, the optional diversity helper flags repeated labels for review. Identify a gap or fragile premise. Assign complementary sources and seek evidence that could alter an idea. Record what each source actually shows, where the analogy breaks, and which candidate changed as a result. If access is missing, label the unresolved claim. Generate alternatives for uncovered ground and revise at least one promising seed if the evidence warrants it. Aim for six to eight mutations in a deep run when the brief supports that breadth.
+## 3. Wave one: blind generation
 
-## 3. Stress-test and refine
+Give each generator the confirmed brief, the picked frame, the H and R lists, the novelty setting, one lens, one operator from [divergent operators](references/divergent-operators.md), and one question only that lens is being asked. Lenses are practitioners and lived situations, not famous people. Keep generators isolated: more interaction and more generators both tend to shrink diversity, so stay at 3 to 5.
 
-Use the [critique rubric](references/adversarial-critique.md). Compare both waves against the user's baseline. For each finalist, describe its specific departure on their chosen dimension and judge its feasibility separately. Give preference to ideas that fit the selected setting and success condition. Check earlier suggestions the user passed over. If a stretch or wild-card shortlist leans on the same vivid detail, try one alternative that still works without it. Keep the shared detail only if the departures on the chosen dimension are genuinely different. If every candidate is too familiar, reopen generation around the repeated premise before presenting. In Deep, use an independent critic when available and compare close finalists in pairs.
+Generate in two steps. First list 8 to 10 short titles (5 to 8 words each). Then expand the most different ones into idea cards with the fields in the divergent operators reference. Keep an obvious-answer list in the coordinator for later comparison.
 
-**Both modes — check shared assumptions.** For each finalist, finish “This works only if …” with the behavior or condition its result depends on. Compare the answers across the shortlist. If several ideas depend on the same doubtful assumption, generate a replacement that can succeed when it is false. Discard any idea that still requires a behavior the user has ruled out for this situation. Shared conditions the user has confirmed can stay.
+## 4. Gut check
 
-**Deep Mode — show the next ten seconds.** For each finalist, start at the moment the user says things usually go wrong. Show what the person does next, what the idea changes at that point, and why the outcome could differ. For slower processes, walk through the next consequential decision. If the walkthrough breaks, revise or drop the idea before presenting. Include the surviving scene in the concept sketch and distinguish a predicted action from an observed one.
+Between the waves, show the user the titles only, grouped by mechanism, in 20 lines or fewer. Ask for one or two sparks they are curious about, one or two instant vetoes, and any angle that is missing. This takes one turn and they can skip it. Develop sparks in wave two, drop vetoes, and treat a missing angle as a new assignment.
 
-For a promising idea with a consequential weakness, revise the part that would fail and check whether it still delivers what made it interesting. State the smallest observation that would distinguish the mechanism from its strongest rival. If the user later brings a trial result, start at the first point where prediction and observation diverged. Revise, keep or drop the idea accordingly.
+## 5. Audit and wave two
 
-## 4. Return a portfolio and invite selection
+Give every card a consistent mechanism label after comparing causal descriptions. In Deep, run `python3 scripts/diversity_audit.py pool.json` from the skill directory. In Quick, count labels by eye. If the pool collapsed (one mechanism over 40% of cards, or near-duplicate clusters), write a taboo repair card for at most two mechanisms. Each repair idea must say how it differs from the banned mechanism and must still work with that mechanism removed. Otherwise it is the same idea renamed.
 
-Honor the requested count. Otherwise return a short set in Quick or about five to seven distinct candidates in Deep. In each 40–80 word sketch, convey what happens, what makes it different from the named baseline, and what could fail. Order by fit to the user's chosen novelty target; explain any particularly speculative dependency. Mark field-wide novelty as unverified unless a scoped precedent check supports a narrower claim.
+Then do the evidence work. Group cards by what would change for the user. Identify a gap or fragile premise. Assign complementary sources and record what each one actually shows, where the analogy breaks, and which card changed as a result. Label unresolved claims when access is missing. Generate for uncovered ground and revise at least one promising seed when evidence warrants it.
 
-In Deep, briefly identify discarded clichés and an unexplored direction. Invite the user to choose a concept or adjust the setting or dimension. On a change, keep the confirmed context, regenerate or revise, and show the difference. Give a recommendation when asked. After selection, save the brief, chosen mechanism, assumptions and next test to docs/ideation/YYYY-MM-DD-<topic>.md when working in a writable project where the user wants the record. Preserve existing notes.
+## 6. Stress-test
+
+Use the [critique reference](references/adversarial-critique.md). Compare both waves against the user's baseline and the obvious-answer list.
+
+- **Shared assumptions.** Finish "This works only if ..." for each finalist. If several depend on the same doubtful condition, generate a replacement that survives it being false. Drop anything that needs a behavior the user ruled out.
+- **Vivid detail check.** If a stretch or wildcard shortlist leans on the same vivid detail, try one alternative that works without it.
+- **Next ten seconds (Deep).** Start at the moment things usually go wrong. Show what the person does next, what the idea changes, and why the outcome could differ. If the walkthrough breaks, revise or drop the idea.
+- **Cheapest test.** For each survivor, name the smallest observation, ideally doable within 48 hours, that would tell its mechanism apart from its strongest rival.
+
+If every candidate is too familiar, reopen generation around the repeated premise before judging.
+
+## 7. Judge and build the portfolio
+
+Rewrite each finalist as a blind card (format in the critique reference). In Quick, compare finalists side by side on the user's priorities. In Deep, judge every pair with the decomposed method and swap audit in the critique reference, using a fresh judge that did not write the ideas, and run `python3 scripts/score_matrix.py comparisons.json`. Tag each finalist close, stretch or wildcard so the portfolio keeps one of each where possible.
+
+## 8. Return the result
+
+Honor a requested count. Otherwise return 3 to 4 sketches in Quick or a 5 to 7 idea portfolio in Deep. Each 40 to 80 word sketch says what happens, how it differs from the named baseline, what it depends on, and its cheapest test. Tag each one close, stretch or wildcard. In Deep, add one line from the judge card (flip rate, any wildcard kept below the cut), the discarded clichés, an unexplored direction, and where the run's files are. List every assumption made in place of a skipped checkpoint.
+
+Invite the user to pick a concept or change the setting, frame or dimension. On a change, keep the confirmed context, regenerate or revise, and show the difference. Give a recommendation when asked. After selection, save the brief, chosen mechanism, assumptions and next test to `docs/ideation/YYYY-MM-DD-<topic>.md` when working in a writable project where the user wants the record. Preserve existing notes. If the user later brings a trial result, start at the first point where prediction and observation diverged.
