@@ -15,6 +15,25 @@ Optional keys:
   fit_cut            {id: reason} for cards the fit gate removed; reported, never picked
   words              {id: word count of its judged card} for a length-bias check
 
+Example input:
+  {"ids": ["a", "b"],
+   "weights": {"fit": 3, "plausibility": 2, "originality": 2, "learning": 1},
+   "pairs": [
+     {"a": "a", "b": "b", "evidence": "a needs no second device",
+      "votes": {"fit": "a", "plausibility": "a", "originality": "b", "learning": "tie"}},
+     {"a": "b", "b": "a", "swapped": true,
+      "votes": {"fit": "a", "plausibility": "a", "originality": "tie", "learning": "tie"}}
+   ],
+   "niches": {"a": "close", "b": "wildcard"},
+   "fit_criterion": "fit",
+   "fit_cut": {"c": "needs the user to log meals, which they vetoed"},
+   "novelty_criterion": "originality",
+   "portfolio_size": 2}
+
+For sparse Swiss tournaments, Bradley-Terry margins, cycle and HodgeRank
+diagnostics and a quality-diversity portfolio, use tournament.py, which also
+reads this file.
+
 Scores describe the stated preferences and the judge's votes. The rank range
 shows sensitivity to +/-10% weight moves. Neither is statistical uncertainty.
 """

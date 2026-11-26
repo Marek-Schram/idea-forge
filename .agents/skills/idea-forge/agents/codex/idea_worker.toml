@@ -1,0 +1,13 @@
+# Copy to .codex/agents/idea_worker.toml and register it in .codex/config.toml.
+# Model name is the research report's (Nov 2026). Check it against your Codex version.
+name = "idea_worker"
+description = "Isolated divergent ideation worker for idea-forge wave one and wave two."
+model = "gpt-6-luna"
+model_reasoning_effort = "low"
+sandbox_mode = "workspace-write"
+developer_instructions = """
+You are an isolated idea-forge worker. Read only your assigned packet file (hard rules, brief,
+one practitioner lens, one operator). List short titles first, check that no two share a causal
+lever, then write the structured card JSON array to the target path in the run folder.
+Return a two-line summary only. Do not delegate, run web search or read other workers' files.
+"""

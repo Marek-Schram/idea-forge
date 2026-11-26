@@ -1,6 +1,45 @@
 # Changelog
 
-## 2.0.0 (2026-11-26)
+## 2.0.0-full (2026-11-26)
+
+Branch `claude/idea-forge-v2-full`. Built on 2.0.0 (lean) so the two can be A/B tested. It keeps every lean feature (fit gate, grounding, explored-mechanism list, frame checkpoint, H and R, gut check, taboo repair, blind cards, swap audits) and adds everything the two research reports recommend that lean left out, including every item in lean's "Not adopted" list.
+
+### Added
+- Three tiers, Light, Standard (default) and Deep, replacing Quick and Deep. A table says what each runs. Question caps follow the second report (3, 6, 10) with the first report's caps as hard ceilings (4, 8, 12). Per-tier time, cost and token figures are shown and labeled as the reports' estimates.
+- Model routing per role: `haiku` workers, scouts and scrubbing, a `sonnet` critic and Deep synthesis worker on a different tier from the workers, and the main session's model for the interview, frames and synthesis. Codex mapping: `gpt-6-luna` workers, `gpt-6.2-sol` critic, `gpt-6.2-astra` or `gpt-6.2-sol` main session.
+- Value-of-information interview: a JSON `brief_state` in `01_brief.json` with seven slots, per-slot confidence, four silent candidate questions per turn scored for decision impact and expected information gain, and a clarify-or-commit stopping rule (all slots filled and no high-impact question left, two terse replies or impatience, or the cap). New probes: cue and advantage (CDM), anxiety and habit veto (JTBD), counterfactual, ambiguous terms mirrored in the user's words (Clean Language), unexplored alternatives, and laddering capped at three rungs.
+- Frames now state what each assumes and what it leaves untouched, stay under 120 words, offer a reorienting frame C, and let the user split wave one across two frames. Light shows two frames.
+- Disk-first run folder with numbered stage files (`01_brief.json` to `08_result.md`, plus `02_wave1/`, `05_wave2/`, `05_evidence/`). Workers read one packet and write one file.
+- Worker packets repeat H and the output schema at the start and the end, carry one operator block only, and stay under about 15K tokens.
+- Operators reorganized into five worker blocks with default practitioner lenses: VS tail (p < 0.10), rule drop and inversion (six modified rule sets filtered by H and realism, contradictions folded in), relational analogy with object mappings, closed world plus assets, and the Brainwriting chain (Deep worker and Light engine). Card schema adds `worker_operator`, `frame_id`, `assumptions`, `slots` and `tier_intent`.
+- Taboo repair bans causal pathways plus their shared assumptions, never keywords, and requires a one-sentence equivalence check per card. Gut vetoes join the ban list.
+- Gut check shows titles grouped by audit cluster with [WILDCARD] tags, asks for a five-word why on each veto, and saves to `04_gut_steer.json`. Deep allows a frame pivot there.
+- Scouts: at most two queries per gap, evidence cards of 200 words or fewer, never raw page text.
+- `scripts/tournament.py` (new, stdlib only). `schedule` emits Swiss rounds (4 up to 14 candidates, else 5) with backtracking no-rematch pairing and coin-flip order, then n / 2 active-boundary pairs chosen by Bradley-Terry uncertainty near the cut, then a swap audit of max(6, 20%) closest pairs, in batches of up to six disjoint pairs. `score` fits Bradley-Terry strengths by the MM algorithm with a Laplace prior, per criterion and composite, with observed-Fisher 95% intervals, separation probabilities and virtual ties, counts circular triads with cycle rate, transitivity and sparse Kendall zeta (per criterion too), splits the flow by weighted HodgeRank into gradient, curl and harmonic shares, checks flip rate, first-shown win rate and length bias, builds a 3-axis Pareto front, a MAP-Elites niche grid (niche by mechanism cluster), niche quotas per novelty setting, and fills the portfolio by greedy k-DPP over the audit's similarity matrix (or greedy creative utility with `--selector utility`). It reports rescued wildcards, killed-by-feasibility alerts, unmet niche quotas, fit-gate cuts and rule-breaking provocations in a judge transparency card plus a one-line critique audit. It reads the lean `pairs` format and inline `swap_votes`, keeps lean's fit-cut and weak-fit rules, and exits 2 on malformed input.
+- `scripts/diversity_audit.py`: `--kernel composite` (0.45 mechanism view from BM25 unigram and bigram cosine blended with char-trigram cosine, 0.35 assumption-set Jaccard, 0.20 causal-slot Jaccard), order-q Vendi at q = 0.5, 1, 2 and infinity, dominant spectral share, surface disguise ratio, leave-one-out Vendi anomaly scores and structural wildcards, complete-linkage clusters, shared-assumption alerts above 35%, highest-overlap pairs with the views they share, pool-size calibrated collapse thresholds with one or two taboo repair cards, beta-Vendi against `--prev-wave` with a `STAGNANT_WAVE2` flag, optional `--embeddings`, `--output` artifact with the similarity matrix and a compact stdout summary, and the research schema's field names. Every lean output key is unchanged, and the default kernel reproduces lean's numbers exactly.
+- Blind cards are four lines (trigger, mechanism, works only if, first cheap test), 40 to 70 words, opaque ids, scrubbed by a `haiku` pass. A non-compensatory hard-rule gate runs before judging. The critic prompt asks for the evidence difference and each option's failure mode before four L/R/T verdicts, in batches of four to six pairs.
+- Agent definitions: `agents/claude/idea-worker.md`, `idea-scout.md`, `idea-critic.md` and `agents/codex/idea_worker.toml`, `idea_scout.toml`, `idea_critic.toml` with a `config.toml.example` that caps concurrency at five and registers each agent explicitly. Codex guardrails: fresh children, Fast mode off, check resolved models first.
+- Harness notes: optional cross-family worker or critic, cache and cost hygiene, compaction between wave two and judging, frontmatter kept to portable fields plus `compatibility`.
+- A short rule recap at the bottom of SKILL.md, so the non-negotiables sit at both ends.
+- `evals/full-eval-protocol.md`: the reports' 12-scenario, 30-comparison blind protocol, rubric, ablation, execution proxy and ship gates, as a document only.
+
+### Changed
+- Default tier is Standard (was Quick). Quick is now Light.
+- `score_matrix.py` is kept unchanged for all-pairs runs. Its input example moved from the reference into its `--help`, as the second report suggests.
+
+### Checklist of report items not built as written
+- Shared `linalg_mini.py` helper: each script stays self-contained, since `python3 -I` does not put the script's folder on the import path.
+- Optional numpy acceleration: skipped to stay stdlib only. A 30-card composite audit runs in about a second.
+- Restricting leave-one-out scores to 15 candidates above 25 cards: not needed at that speed, so every card gets a score.
+- Replacing the plus or minus 10% weight sensitivity with Fisher intervals: done in `tournament.py`. `score_matrix.py` keeps the old range for backward compatibility.
+- Second report's kernel with the sketch inside it (0.20): not used, because the sketch must stay outside the mechanism kernel for the surface disguise ratio to mean anything. The first report's 0.45 / 0.35 / 0.20 split is used, with the second report's char trigrams folded into the mechanism view.
+- Two-round Swiss and swaps on only the top 3 or 4 pairs (second report): the first report's 4 or 5 rounds and max(6, 20%) swaps are used. At 6 to 12 finalists they land in the second report's 1.5n to 2n pair range.
+- Per-tier orchestrator model (mid tier for Light and Standard): a skill cannot switch the main session's model, so this is guidance in the routing table.
+- SKILL.md under 3,200 tokens: not met (about 5,500 tokens, 202 lines, under the 25 KB and 320-line limits). The rules, tiers, routing and run folder sit in the first part that survives compaction.
+- Deleting deprecated Codex keys and the retired Claude Code agents wizard, and removing fixed minimum interview counts: not applicable, since lean had none of them.
+- Unverified figures (costs, token footprints, model names, the 72-call and 81.5% recall simulation): kept and labeled as the reports' estimates.
+
+## 2.0.0 (lean) (2026-11-26)
 
 Targets the two complaints from real use, same-y ideas and ideas that don't fit the situation, plus judging that can be swayed by order and polish.
 

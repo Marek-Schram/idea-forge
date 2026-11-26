@@ -7,7 +7,7 @@ Six briefs is a smoke test, not proof. The Gemini report's own power math says y
 ## Setup
 
 1. Keep two copies of the skill: 1.2.1 from `main` and 2.0 from the `claude/idea-forge-v2` branch.
-2. For each brief, open a fresh session per version, same model, Quick mode (the default).
+2. For each brief, open a fresh session per version, same model, Quick mode (the default). On the `claude/idea-forge-v2-full` branch Quick is called Light and the default is Standard, so compare lean Quick with full Light for cost-matched runs, or each version's default. For the larger 30-comparison test, see `full-eval-protocol.md`.
 3. Someone plays the user. You, a friend, or a separate Claude session given only the brief and its hidden card. A human is better, since a model playing the user tends to volunteer the hidden card too easily.
 4. The player answers questions honestly but reveals a hidden card item only when a question points at it. Never volunteer one.
 

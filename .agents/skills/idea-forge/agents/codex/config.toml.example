@@ -1,0 +1,13 @@
+# Merge into .codex/config.toml. Registering each config_file explicitly guards against
+# builds that skip directory discovery and run children on the parent's model.
+[agents]
+max_concurrent_threads_per_session = 5
+
+[agents.idea_worker]
+config_file = ".codex/agents/idea_worker.toml"
+
+[agents.idea_scout]
+config_file = ".codex/agents/idea_scout.toml"
+
+[agents.idea_critic]
+config_file = ".codex/agents/idea_critic.toml"
