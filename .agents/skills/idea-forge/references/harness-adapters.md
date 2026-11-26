@@ -20,7 +20,7 @@ Give a fresh worker a missing dimension to explore or one specific seed to revis
 
 ## Run on either host
 
-Use a lower-cost model for every delegated role, including research, refinement and critique. Select it explicitly when dispatching. In Codex prefer `gpt-6.2-sol`; in Claude Code prefer `haiku`. Use another available lower-cost worker if needed. When the host cannot select a lower-cost worker and none is known to be configured, use the in-session fallback below. Keep these choices scoped to Idea Forge workers.
+Use a lower-cost model for every delegated role, including research, refinement and critique. Select it explicitly when dispatching. In Codex prefer `gpt-6.2-sol`. In Claude Code prefer `sonnet` for delegated work. Use `haiku` if Sonnet is unavailable or the user requests a lower-cost run. Use another available lower-cost worker if needed. When the host cannot select a lower-cost worker and none is known to be configured, use the in-session fallback below. Keep these choices scoped to Idea Forge workers.
 
 - **Codex.** If delegation is available and permitted, use the host's subagent tool with self-contained prompts and fresh contexts where supported. Gather the independent first passes before distributing evidence.
 - **Claude Code.** If available and permitted, dispatch general-purpose workers through the Agent tool in a parallel batch. Keep the interview in the parent session.

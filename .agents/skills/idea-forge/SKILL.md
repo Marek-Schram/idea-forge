@@ -3,7 +3,7 @@ name: idea-forge
 description: Interview the user, generate ideas that work or feel different from familiar options, and stress-test them. Use for open-ended brainstorming, feature discovery, research directions, or a request to get beyond familiar solutions. Skip when the user has chosen a direction and wants only implementation or critique.
 license: MIT
 metadata:
-  version: "1.2.0"
+  version: "1.2.1"
 ---
 
 # Idea Forge
