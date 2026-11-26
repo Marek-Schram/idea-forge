@@ -3,12 +3,14 @@
 Compares candidates on structured fields (mechanism label, causal mechanism,
 what the idea depends on, what changes for the user), not just shared wording.
 Reports a Vendi score (the effective number of distinct ideas), clusters of
-near-duplicates, each candidate's unique contribution, and up to two
+near-duplicates, shared assumptions, how much more varied the sketches look
+than the mechanisms are, each candidate's unique contribution, and up to two
 mechanism-taboo targets for a repair wave.
 
 Input: a JSON list of candidates. Required keys: id, mechanism, sketch.
 Optional keys: title, how (the causal path in one line), depends_on (the
-"works only if" assumption), changes (what changes for the user).
+"works only if" assumption), changes (what changes for the user),
+grounded_in (the detail of the user's situation the idea relies on).
 
 Stdlib only. The similarity is still lexical inside each field, so the
 quality of the labels the coordinator writes matters more than the math.
@@ -65,7 +67,7 @@ def normalize(rows):
         if key in seen:
             raise ValueError(f"duplicate candidate id {key}")
         seen.add(key)
-        for k in ("title", "how", "depends_on", "changes"):
+        for k in ("title", "how", "depends_on", "changes", "grounded_in"):
             if k in row and not isinstance(row[k], str):
                 raise ValueError(f"{key}: {k} must be text")
         label = " ".join(row["mechanism"].casefold().split())
@@ -78,6 +80,8 @@ def normalize(rows):
                 "depends_on": tokens(row.get("depends_on", "")),
                 "changes": tokens(row.get("changes", "")),
                 "sketch": tokens(row["sketch"]),
+                "has_grounding_field": "grounded_in" in row,
+                "grounded": bool(row.get("grounded_in", "").strip()),
             }
         )
     return out
@@ -193,6 +197,24 @@ def audit(rows, threshold=0.5):
         for a, b in combinations(ids, 2)
         if jaccard(by_id[a]["sketch"], by_id[b]["sketch"]) >= 0.6
     ]
+    # Shared assumptions: cards whose "works only if" lines overlap heavily.
+    dep_ids = [i for i in ids if by_id[i]["depends_on"]]
+    dep_sim = {(a, b): jaccard(by_id[a]["depends_on"], by_id[b]["depends_on"]) for a in dep_ids for b in dep_ids if a != b}
+    shared = [
+        {"ids": g, "share": round(len(g) / n, 3)}
+        for g in clusters(dep_ids, dep_sim, 0.45)
+        if n >= 4 and len(g) / n >= 1 / 3
+    ]
+
+    # Surface vs mechanism: Vendi on sketch words alone over Vendi on the structured fields.
+    # Well above 1 means the sketches read differently while the mechanisms repeat.
+    surface = [[1.0 if i == j else jaccard(items[i]["sketch"], items[j]["sketch"]) for j in range(n)] for i in range(n)]
+    surface_ratio = round(vendi(surface) / score, 2) if n >= 4 else None
+
+    ungrounded = [r["id"] for r in items if r["has_grounding_field"] and not r["grounded"]]
+    if any(r["has_grounding_field"] for r in items):
+        ungrounded += [r["id"] for r in items if not r["has_grounding_field"]]
+
     collapsed = n >= 4 and (bool(dominant) or ratio < 0.5 or any(len(g) / n >= 0.25 for g in groups))
     ranked = sorted(contribution.items(), key=lambda kv: kv[1]) if contribution else []
     return {
@@ -205,9 +227,13 @@ def audit(rows, threshold=0.5):
         "near_duplicate_clusters": groups,
         "most_redundant": [i for i, _ in ranked[:3]],
         "most_unique": [i for i, _ in reversed(ranked[-3:])],
+        "shared_assumptions": shared,
+        "surface_vs_mechanism": surface_ratio,
+        "missing_grounding": ungrounded,
         "taboo_targets": taboo if collapsed else [],
         "similar_wording": similar_wording,
-        "note": "Lexical similarity on structured fields. Check flagged clusters by hand before banning a mechanism.",
+        "note": "Lexical similarity on structured fields. Check flagged clusters by hand before banning a mechanism. "
+        "missing_grounding lists cards for the fit gate to repair or cut.",
     }
 
 

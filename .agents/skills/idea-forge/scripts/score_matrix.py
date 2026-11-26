@@ -9,6 +9,10 @@ Optional keys:
   niches             {id: "close" | "stretch" | "wildcard"} for portfolio slots
   portfolio_size     how many to recommend (default min(5, number of ids))
   novelty_criterion  criterion name whose top candidate is always kept
+  fit_criterion      criterion that guards the balance slots (default "fit" if weighted):
+                     a candidate that loses on it to more than half the field is
+                     never kept for balance or novelty, only on its own score
+  fit_cut            {id: reason} for cards the fit gate removed; reported, never picked
   words              {id: word count of its judged card} for a length-bias check
 
 Scores describe the stated preferences and the judge's votes. The rank range
@@ -141,20 +145,47 @@ def summarize(data):
     if novelty is not None and novelty not in weights:
         raise ValueError("novelty_criterion must name one of the weighted criteria")
 
-    picks, reasons = [], {}
+    fit = data.get("fit_criterion", "fit" if "fit" in weights else None)
+    if fit is not None and fit not in weights:
+        raise ValueError("fit_criterion must name one of the weighted criteria")
+    fit_cut = data.get("fit_cut") or {}
+    if not isinstance(fit_cut, dict) or any(not isinstance(k, str) or not isinstance(v, str) for k, v in fit_cut.items()):
+        raise ValueError("fit_cut must map ids to a text reason")
+
+    # Weak fit: lost on the fit criterion to more than half of the other candidates.
+    weak_fit = set()
+    if fit and len(ids) >= 3:
+        for i in ids:
+            losses = sum(1 for key, v in votes.items() if i in key and v[fit] not in (i, "tie"))
+            if losses > (len(ids) - 1) / 2:
+                weak_fit.add(i)
+    eligible = [i for i in order if i not in fit_cut]
+    if not eligible:
+        raise ValueError("every judged candidate is in fit_cut")
+    size = min(size, len(eligible))
+
+    picks, reasons, passed_over = [], {}, {}
     for niche in NICHE_ORDER:
-        members = [i for i in order if niches.get(i) == niche]
-        if members and len(picks) < size:
-            picks.append(members[0])
-            reasons[members[0]] = f"best {niche}"
+        members = [i for i in eligible if niches.get(i) == niche]
+        good = [i for i in members if i not in weak_fit]
+        if members and members[0] in weak_fit:
+            passed_over.setdefault(members[0], []).append(f"best {niche}")
+        if good and len(picks) < size:
+            picks.append(good[0])
+            reasons[good[0]] = f"best {niche}"
     if novelty:
-        top_novel = max(order, key=lambda i: (points[i][novelty], base[i]))
-        if top_novel not in picks:
+        ranked_novel = sorted(eligible, key=lambda i: (-points[i][novelty], -base[i], i))
+        top_novel = ranked_novel[0]
+        if top_novel in weak_fit:
+            passed_over.setdefault(top_novel, []).append(f"top on {novelty}")
+            ranked_novel = [i for i in ranked_novel if i not in weak_fit]
+            top_novel = ranked_novel[0] if ranked_novel else None
+        if top_novel and top_novel not in picks:
             if len(picks) >= size:
                 picks.pop()
             picks.append(top_novel)
             reasons[top_novel] = f"top on {novelty}"
-    for i in order:
+    for i in eligible:
         if len(picks) >= size:
             break
         if i not in picks:
@@ -184,7 +215,13 @@ def summarize(data):
         r = pearson([words[i] for i in ids], [base[i] for i in ids])
         flag = " Longer cards are winning: re-trim cards to the same length." if r > 0.5 else ""
         lines.append(f"- Card length vs score correlation: {r:+.2f}.{flag}")
-    kept = [i for i in picks if i not in order[:size]]
+    if fit_cut:
+        lines.append(f"- Fit gate cut {len(fit_cut)} card(s) before judging: "
+                     + "; ".join(f"{clean(k)}: {v}" for k, v in fit_cut.items()))
+    if passed_over:
+        lines.append("- Passed over for balance because it lost on fit to most of the field: "
+                     + ", ".join(f"{clean(i)} ({' and '.join(roles)})" for i, roles in passed_over.items()))
+    kept = [i for i in picks if i not in eligible[:size]]
     if kept:
         lines.append(
             "- Kept for balance, though below the weighted-score cut: "
